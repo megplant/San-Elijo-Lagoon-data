@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>San Elijo Lagoon — Measurements Table</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:"Segoe UI",Arial,sans-serif;color:#d8f3ff;background:linear-gradient(160deg,#071827,#123d63 70%);padding:28px 16px}
+  .wrap{width:min(1250px,100%);margin:auto;background:rgba(7,28,45,.82);border:1px solid #236888;border-radius:15px;padding:25px;box-shadow:0 0 55px rgba(0,50,90,.5)}
+  h1{margin:0;color:#7edbff;font-size:1.5rem}.sub{color:#8db9ca;margin:6px 0 20px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:20px}.card{background:rgba(15,59,91,.72);border:1px solid #236888;border-radius:9px;padding:11px}.label{color:#86b8c9;font-size:.7rem;letter-spacing:.08em}.value{color:#7ef0ff;font-size:1.05rem;font-weight:600;margin-top:4px}
+  .table-wrap{overflow:auto;border:1px solid rgba(60,160,220,.25);border-radius:9px} table{width:100%;min-width:980px;border-collapse:collapse;font-size:.82rem} th{position:sticky;top:0;background:#0b3555;color:#94c9da;text-transform:uppercase;letter-spacing:.06em;font-size:.7rem;padding:11px;text-align:right} th:first-child,td:first-child{text-align:left} td{padding:9px 11px;border-bottom:1px solid rgba(60,140,200,.13);text-align:right;color:#d1edf7} tr:hover td{background:rgba(30,100,180,.18)} .note{color:#91b6c5;font-size:.8rem;margin-top:14px}
+</style>
+</head>
+<body><main class="wrap">
+<h1>San Elijo Lagoon — Water-Quality Measurements</h1>
+<div class="sub" id="subtitle">Loading measurements…</div>
+<section class="cards" id="cards"></section>
+<div class="table-wrap"><table><thead><tr>
+<th>Outing</th><th>Sample</th><th>Date</th><th>Time</th><th>pH</th><th>Cond.</th><th>Sp. Cond.</th><th>Temp. °C</th><th>Latitude</th><th>Longitude</th><th>Substrate</th><th>Depth</th><th>Tide</th>
+</tr></thead><tbody id="body"></tbody></table></div>
+<div class="note">Source: san_elijo_measurements.csv · Values are displayed as recorded in the current workbook.</div>
+</main>
+<script>
+function parseCSV(text){const lines=text.trim().split(/\r?\n/).filter(Boolean),h=lines.shift().split(",");return lines.map(line=>{const v=line.split(","),o={};h.forEach((k,i)=>o[k]=v[i]??"");return o})}
+function n(v){return v==="NA"||v===""?"—":Number(v).toFixed(2)}
+function mean(key){const v=rows.map(r=>Number(r[key])).filter(Number.isFinite);return v.reduce((a,b)=>a+b,0)/v.length}
+let rows=[];
+fetch("san_elijo_measurements.csv").then(r=>r.text()).then(text=>{
+ rows=parseCSV(text);
+ document.getElementById("subtitle").textContent=rows.length+" measurements · "+new Set(rows.map(r=>r.outing_ID)).size+" outing · source: measurements.csv";
+ document.getElementById("cards").innerHTML=[
+  ["SAMPLES",rows.length],["OUTING",rows[0]?.outing_ID||"—"],["MEAN pH",mean("pH").toFixed(2)],["MEAN TEMP",mean("temp").toFixed(2)+" °C"],["MEAN COND.",mean("cond").toFixed(2)],["TIDE", [...new Set(rows.map(r=>r.tide))].join(", ")]
+ ].map(x=>'<div class="card"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div></div>').join("");
+ document.getElementById("body").innerHTML=rows.map(r=>'<tr><td>'+r.outing_ID+'</td><td>'+r.sampling_ID+'</td><td>'+r.date.slice(0,10)+'</td><td>'+r.time.slice(0,5)+'</td><td>'+n(r.pH)+'</td><td>'+n(r.cond)+'</td><td>'+n(r.spc)+'</td><td>'+n(r.temp)+'</td><td>'+n(r.lat)+'</td><td>'+n(r.long)+'</td><td>'+r.substrate+'</td><td>'+n(r.depth)+'</td><td>'+r.tide+'</td></tr>').join("");
+}).catch(()=>document.getElementById("subtitle").textContent="Could not load san_elijo_measurements.csv");
+</script></body></html>
