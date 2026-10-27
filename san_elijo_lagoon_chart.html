@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,162 +6,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>San Elijo Lagoon — Animated Sampling Route</title>
 <style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; color: #d8f3ff;
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: radial-gradient(circle at top, #123d63, #071827 70%);
-  }
-  .wrap { width: min(1100px, 100%); margin: auto; padding: 28px 18px 40px; }
-  h1 { margin: 0; color: #7edbff; font-size: clamp(1.35rem, 3vw, 2rem); }
-  .sub { color: #8db9ca; margin: 6px 0 18px; }
-  .toolbar {
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-    background: rgba(11, 43, 72, .8); border: 1px solid #236888;
-    border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
-  }
-  label { color: #a9d8e8; font-size: .9rem; }
-  select {
-    color: #e6fbff; background: #0b2d4d; border: 1px solid #3b8eae;
-    border-radius: 6px; padding: 7px 10px;
-  }
-  canvas { display: block; width: 100%; height: auto; background: #061522;
-    border: 1px solid #236888; border-radius: 14px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
-    gap: 10px; margin-top: 14px; }
-  .card { background: rgba(15, 59, 91, .72); border: 1px solid #236888;
-    border-radius: 10px; padding: 12px; }
-  .label { color: #86b8c9; font-size: .72rem; letter-spacing: .08em; }
-  .value { color: #7ef0ff; font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
-  .note { color: #91b6c5; font-size: .82rem; margin-top: 15px; }
+* { box-sizing: border-box; }
+body { margin:0; min-height:100vh; color:#d8f3ff; font-family:"Segoe UI",Arial,sans-serif; background:radial-gradient(circle at top,#123d63,#071827 70%); }
+.wrap { width:min(1100px,100%); margin:auto; padding:28px 18px 40px; }
+h1 { margin:0; color:#7edbff; font-size:clamp(1.35rem,3vw,2rem); }
+.sub { color:#8db9ca; margin:6px 0 18px; }
+.toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:rgba(11,43,72,.8); border:1px solid #236888; border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+label { color:#a9d8e8; font-size:.9rem; }
+select { color:#e6fbff; background:#0b2d4d; border:1px solid #3b8eae; border-radius:6px; padding:7px 10px; }
+canvas { display:block; width:100%; height:auto; background:#061522; border:1px solid #236888; border-radius:14px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:14px; }
+.card { background:rgba(15,59,91,.72); border:1px solid #236888; border-radius:10px; padding:12px; }
+.label { color:#86b8c9; font-size:.72rem; letter-spacing:.08em; }
+.value { color:#7ef0ff; font-size:1.1rem; font-weight:600; margin-top:4px; }
+.note { color:#91b6c5; font-size:.82rem; margin-top:15px; }
 </style>
 </head>
-<body>
-<main class="wrap">
-  <h1>San Elijo Lagoon — Animated Sampling Route</h1>
-  <div class="sub" id="subtitle">Loading measurements…</div>
-  <div class="toolbar">
-    <label for="parameter">Color points by:</label>
-    <select id="parameter">
-      <option value="pH">pH</option>
-      <option value="temp">Temperature (°C)</option>
-      <option value="cond">Conductivity</option>
-      <option value="spc">Specific Conductivity</option>
-    </select>
-    <span id="legend" class="note"></span>
-  </div>
-  <canvas id="route" width="1060" height="610"></canvas>
-  <section class="cards" id="cards"></section>
-  <div class="note">
-    Points follow the recorded sampling order. Coordinates are plotted as longitude and latitude;
-    color represents the selected measurement parameter. This page reads from measurements.csv.
-  </div>
+<body><main class="wrap">
+<h1>San Elijo Lagoon — Animated Sampling Route</h1>
+<div class="sub">56 measurements · 1 outing · 2026-10-16</div>
+<div class="toolbar"><label for="parameter">Color points by:</label>
+<select id="parameter"><option value="pH">pH</option><option value="temp">Temperature (°C)</option><option value="cond">Conductivity</option><option value="spc">Specific Conductivity</option></select>
+<span id="legend" class="note"></span></div>
+<canvas id="route" width="1060" height="610"></canvas>
+<section class="cards">
+<div class="card"><div class="label">SAMPLES</div><div class="value">56</div></div>
+<div class="card"><div class="label">OUTING(S)</div><div class="value">OUT-001</div></div>
+<div class="card"><div class="label">pH RANGE</div><div class="value">8.02–8.41</div></div>
+<div class="card"><div class="label">MEAN TEMP</div><div class="value">21.76 °C</div></div>
+<div class="card"><div class="label">COND. RANGE</div><div class="value">25.51–49.92</div></div>
+</section><div class="note">Points follow the recorded sampling order. Coordinates are plotted as longitude and latitude.</div>
 </main>
 <script>
-const canvas = document.getElementById("route");
-const ctx = canvas.getContext("2d");
-const parameter = document.getElementById("parameter");
-let rows = [], current = 0, last = 0;
-const labels = {pH:"pH", temp:"Temperature (°C)", cond:"Conductivity", spc:"Specific Conductivity"};
-
-function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  const headers = lines.shift().split(",");
-  return lines.map(line => {
-    const values = line.split(",");
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = values[i] ?? "");
-    ["pH","cond","spc","temp","lat","long","depth"].forEach(k => {
-      if (obj[k] !== "" && obj[k] !== "NA") obj[k] = Number(obj[k]);
-    });
-    return obj;
-  });
+const rows = [{outing_ID:"OUT-001",sampling_ID:"S001",date:"2026-10-16T00:00:00",time:"11:04:00",pH:"8.02",cond:"30.56",spc:"31.02",temp:"22.7",lat:"33.009511",long:"-117.265513",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S002",date:"2026-10-16T00:00:00",time:"11:05:00",pH:"8.05",cond:"30.68",spc:"32.18",temp:"22.6",lat:"33.009278",long:"-117.265751",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S003",date:"2026-10-16T00:00:00",time:"11:06:00",pH:"8.07",cond:"27.1",spc:"28.73",temp:"22.1",lat:"33.009164",long:"-117.265951",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S004",date:"2026-10-16T00:00:00",time:"11:07:00",pH:"8.07",cond:"27.71",spc:"29.34",temp:"22",lat:"33.008934",long:"-117.266156",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S005",date:"2026-10-16T00:00:00",time:"11:08:00",pH:"8.06",cond:"28.04",spc:"29.72",temp:"22.2",lat:"33.008786",long:"-117.266339",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S006",date:"2026-10-16T00:00:00",time:"11:09:00",pH:"8.06",cond:"29.57",spc:"31.48",temp:"22.1",lat:"33.008648",long:"-117.266676",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S007",date:"2026-10-16T00:00:00",time:"11:10:00",pH:"8.06",cond:"30.03",spc:"31.77",temp:"22.1",lat:"33.008584",long:"-117.267255",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S008",date:"2026-10-16T00:00:00",time:"11:11:00",pH:"8.07",cond:"30.29",spc:"31.99",temp:"22.3",lat:"33.008534",long:"-117.267513",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S009",date:"2026-10-16T00:00:00",time:"11:12:00",pH:"8.07",cond:"30.25",spc:"31.89",temp:"22.3",lat:"33.008528",long:"-117.267672",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S010",date:"2026-10-16T00:00:00",time:"11:13:00",pH:"8.06",cond:"30.21",spc:"31.79",temp:"22.3",lat:"33.00857",long:"-117.268011",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S011",date:"2026-10-16T00:00:00",time:"11:14:00",pH:"8.06",cond:"29.92",spc:"31.75",temp:"22",lat:"33.008826",long:"-117.268305",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S012",date:"2026-10-16T00:00:00",time:"11:15:00",pH:"8.08",cond:"28.04",spc:"30.29",temp:"21.1",lat:"33.009122",long:"-117.268603",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S013",date:"2026-10-16T00:00:00",time:"11:16:00",pH:"8.08",cond:"28.14",spc:"30.39",temp:"21.2",lat:"33.009168",long:"-117.268734",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S014",date:"2026-10-16T00:00:00",time:"11:17:00",pH:"8.09",cond:"28.31",spc:"30.49",temp:"21.5",lat:"33.009178",long:"-117.2688",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S015",date:"2026-10-16T00:00:00",time:"11:18:00",pH:"8.09",cond:"28.48",spc:"30.44",temp:"21.7",lat:"33.009196",long:"-117.26911",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S016",date:"2026-10-16T00:00:00",time:"11:19:00",pH:"8.09",cond:"28.74",spc:"30.88",temp:"21.6",lat:"33.009239",long:"-117.269341",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S017",date:"2026-10-16T00:00:00",time:"11:20:00",pH:"8.09",cond:"29.24",spc:"31.24",temp:"21.6",lat:"33.00928",long:"-117.269734",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S018",date:"2026-10-16T00:00:00",time:"11:21:00",pH:"8.09",cond:"28.89",spc:"30.92",temp:"21.6",lat:"33.00931",long:"-117.269989",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S019",date:"2026-10-16T00:00:00",time:"11:22:00",pH:"8.1",cond:"25.91",spc:"28.03",temp:"21.1",lat:"33.00943",long:"-117.270338",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S020",date:"2026-10-16T00:00:00",time:"11:23:00",pH:"8.11",cond:"26.02",spc:"28.15",temp:"21.1",lat:"33.009503",long:"-117.2700653",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S021",date:"2026-10-16T00:00:00",time:"11:24:00",pH:"8.1",cond:"27.19",spc:"29.82",temp:"21.2",lat:"33.009771",long:"-117.270995",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S022",date:"2026-10-16T00:00:00",time:"11:25:00",pH:"8.13",cond:"27.09",spc:"29.25",temp:"21.1",lat:"33.010122",long:"-117.271073",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S023",date:"2026-10-16T00:00:00",time:"11:26:00",pH:"8.12",cond:"27.19",spc:"29.2",temp:"21.2",lat:"33.010261",long:"-117.271247",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S024",date:"2026-10-16T00:00:00",time:"11:27:00",pH:"8.12",cond:"26.65",spc:"28.61",temp:"21.2",lat:"33.010276",long:"-117.271378",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S025",date:"2026-10-16T00:00:00",time:"11:29:00",pH:"8.15",cond:"25.75",spc:"27.88",temp:"21.1",lat:"33.011077",long:"-117.271413",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S026",date:"2026-10-16T00:00:00",time:"11:30:00",pH:"8.17",cond:"26.87",spc:"28.94",temp:"21.2",lat:"33.011079",long:"-117.271449",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S027",date:"2026-10-16T00:00:00",time:"11:31:00",pH:"8.16",cond:"25.51",spc:"27.48",temp:"21.2",lat:"33.011176",long:"-117.271711",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S028",date:"2026-10-16T00:00:00",time:"11:32:00",pH:"8.21",cond:"26.48",spc:"28.23",temp:"21.4",lat:"33.011424",long:"-117.271929",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S029",date:"2026-10-16T00:00:00",time:"11:33:00",pH:"8.2",cond:"28.31",spc:"30.71",temp:"21.3",lat:"33.011419",long:"-117.272156",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S030",date:"2026-10-16T00:00:00",time:"11:34:00",pH:"8.18",cond:"29.02",spc:"31.32",temp:"21.3",lat:"33.011555",long:"-117.27375",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S031",date:"2026-10-16T00:00:00",time:"11:35:00",pH:"8.19",cond:"31.27",spc:"33.45",temp:"21.4",lat:"33.011421",long:"-117.272797",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S032",date:"2026-10-16T00:00:00",time:"11:36:00",pH:"8.21",cond:"32.3",spc:"34.6",temp:"21.5",lat:"33.011413",long:"-117.273025",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S033",date:"2026-10-16T00:00:00",time:"11:37:00",pH:"8.22",cond:"33.49",spc:"35.22",temp:"21.5",lat:"33.011348",long:"-117.27345",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S034",date:"2026-10-16T00:00:00",time:"11:38:00",pH:"8.21",cond:"32.52",spc:"34.66",temp:"21.6",lat:"33.011311",long:"-117.273715",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S035",date:"2026-10-16T00:00:00",time:"11:39:00",pH:"8.23",cond:"31.79",spc:"34.35",temp:"21.7",lat:"33.011294",long:"-117.273953",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S036",date:"2026-10-16T00:00:00",time:"11:40:00",pH:"8.28",cond:"37.05",spc:"40.51",temp:"21.8",lat:"33.011302",long:"-117.274285",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S037",date:"2026-10-16T00:00:00",time:"11:41:00",pH:"8.34",cond:"48.7",spc:"51.7",temp:"22",lat:"33.011358",long:"-117.274534",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S038",date:"2026-10-16T00:00:00",time:"11:42:00",pH:"8.32",cond:"46.85",spc:"49.4",temp:"21.9",lat:"33.011792",long:"-117.27",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S039",date:"2026-10-16T00:00:00",time:"11:44:00",pH:"8.38",cond:"49.6",spc:"52.7",temp:"21.9",lat:"33.01187",long:"-117.274591",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S040",date:"2026-10-16T00:00:00",time:"11:45:00",pH:"8.32",cond:"46.5",spc:"49.5",temp:"22",lat:"33.011802",long:"-117.274686",substrate:"sand",depth:"1",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S041",date:"2026-10-16T00:00:00",time:"11:46:00",pH:"8.38",cond:"49.64",spc:"52.7",temp:"22",lat:"33.012129",long:"-117.2746",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S042",date:"2026-10-16T00:00:00",time:"11:47:00",pH:"8.38",cond:"49.62",spc:"52.7",temp:"21.9",lat:"33.012086",long:"-117.274798",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S043",date:"2026-10-16T00:00:00",time:"11:48:00",pH:"8.38",cond:"49.64",spc:"52.7",temp:"22",lat:"33.012005",long:"-117.274816",substrate:"murky",depth:null,tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S044",date:"2026-10-16T00:00:00",time:"11:50:00",pH:"8.39",cond:"49.63",spc:"52.7",temp:"22",lat:"33.013069",long:"-117.275134",substrate:"sand",depth:"1",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S045",date:"2026-10-16T00:00:00",time:"11:52:00",pH:"8.39",cond:"49.66",spc:"52.7",temp:"22",lat:"33.012858",long:"-117.274853",substrate:"sand",depth:"1",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S046",date:"2026-10-16T00:00:00",time:"11:54:00",pH:"8.37",cond:"49.85",spc:"52.7",temp:"22.2",lat:"33.012764",long:"-117.275013",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S047",date:"2026-10-16T00:00:00",time:"11:56:00",pH:"8.41",cond:"49.66",spc:"52.7",temp:"22",lat:"33.013033",long:"-117.274864",substrate:"sand",depth:"1",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S048",date:"2026-10-16T00:00:00",time:"11:58:00",pH:"8.4",cond:"49.65",spc:"52.7",temp:"22",lat:"33.013345",long:"-117.274944",substrate:"sand",depth:"0.5",tide:"rising"},{outing_ID:"OUT-001",sampling_ID:"S049",date:"2026-10-16T00:00:00",time:"12:00:00",pH:"8.4",cond:"49.62",spc:"52.7",temp:"21.9",lat:"33.013537",long:"-117.275041",substrate:"sand",depth:"1",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S050",date:"2026-10-16T00:00:00",time:"12:01:00",pH:"8.4",cond:"49.61",spc:"52.7",temp:"21.9",lat:"33.013762",long:"-117.275263",substrate:"sand",depth:"1",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S051",date:"2026-10-16T00:00:00",time:"12:03:00",pH:"8.39",cond:"49.6",spc:"52.7",temp:"22",lat:"33.013983",long:"-117.275548",substrate:"sand",depth:"1.5",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S052",date:"2026-10-16T00:00:00",time:"12:05:00",pH:"8.39",cond:"49.62",spc:"52.7",temp:"21.9",lat:"33.014124",long:"-117.275625",substrate:"sand",depth:"1.5",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S053",date:"2026-10-16T00:00:00",time:"12:06:00",pH:"8.39",cond:"49.61",spc:"52.7",temp:"21.9",lat:"33.014274",long:"-117.27831",substrate:"sand",depth:"2",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S054",date:"2026-10-16T00:00:00",time:"12:08:00",pH:"8.39",cond:"49.59",spc:"52.7",temp:"21.9",lat:"33.014461",long:"-117.276287",substrate:"sand",depth:"1.5",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S055",date:"2026-10-16T00:00:00",time:"12:10:00",pH:"8.4",cond:"49.6",spc:"52.7",temp:"21.9",lat:"33.014371",long:"-117.276749",substrate:"sand",depth:"1",tide:"peak"},{outing_ID:"OUT-001",sampling_ID:"S056",date:"2026-10-16T00:00:00",time:"12:12:00",pH:"8.39",cond:"49.92",spc:"52.7",temp:"22.2",lat:"33.014162",long:"-117.277262",substrate:"sand",depth:"0.5",tide:"peak"}];
+const canvas = document.getElementById("route"), ctx = canvas.getContext("2d"), parameter = document.getElementById("parameter");
+let current=0,last=0;
+const labels={pH:"pH",temp:"Temperature (°C)",cond:"Conductivity",spc:"Specific Conductivity"};
+function num(v){return Number(v);}
+function color(v,min,max){const t=max===min?.5:Math.max(0,Math.min(1,(v-min)/(max-min)));return "rgb("+Math.round(35+220*t)+","+Math.round(190-55*t)+","+Math.round(245-30*t)+")";}
+function project(r,b){return{x:72+(num(r.long)-b.minLon)/(b.maxLon-b.minLon)*(canvas.width-112),y:48+(b.maxLat-num(r.lat))/(b.maxLat-b.minLat)*(canvas.height-100)};}
+function draw(){
+ const vals=rows.map(r=>num(r[parameter.value])).filter(Number.isFinite);
+ const b={minLon:Math.min(...rows.map(r=>num(r.long))),maxLon:Math.max(...rows.map(r=>num(r.long))),minLat:Math.min(...rows.map(r=>num(r.lat))),maxLat:Math.max(...rows.map(r=>num(r.lat)))};
+ const min=Math.min(...vals),max=Math.max(...vals);
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#061522";ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.strokeStyle="rgba(130,210,240,.12)";ctx.lineWidth=1;
+ for(let i=0;i<=6;i++){const x=72+i*(canvas.width-112)/6,y=48+i*(canvas.height-100)/6;ctx.beginPath();ctx.moveTo(x,48);ctx.lineTo(x,canvas.height-52);ctx.stroke();ctx.beginPath();ctx.moveTo(72,y);ctx.lineTo(canvas.width-40,y);ctx.stroke();}
+ ctx.strokeStyle="rgba(130,210,240,.5)";ctx.beginPath();ctx.moveTo(72,48);ctx.lineTo(72,canvas.height-52);ctx.lineTo(canvas.width-40,canvas.height-52);ctx.stroke();
+ ctx.fillStyle="#91c8da";ctx.font="12px Segoe UI";ctx.fillText("Latitude",18,30);ctx.fillText("Longitude",canvas.width-110,canvas.height-18);
+ ctx.strokeStyle="rgba(126,219,255,.55)";ctx.lineWidth=2;ctx.beginPath();rows.forEach((r,i)=>{const p=project(r,b);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();
+ const visible=Math.max(1,Math.floor(current));rows.forEach((r,i)=>{if(i>=visible)return;const p=project(r,b),v=num(r[parameter.value]);ctx.beginPath();ctx.arc(p.x,p.y,i===visible-1?8:5,0,Math.PI*2);ctx.fillStyle=color(v,min,max);ctx.fill();ctx.strokeStyle=i===visible-1?"#fff":"#9cecff";ctx.lineWidth=1.4;ctx.stroke();if(i===visible-1){ctx.fillStyle="#e5fbff";ctx.font="bold 11px Segoe UI";ctx.fillText(r.sampling_ID,p.x+10,p.y-10);}});
+ document.getElementById("legend").textContent=labels[parameter.value]+" range: "+min.toFixed(2)+"–"+max.toFixed(2);
 }
-function range(key) {
-  const values = rows.map(r => Number(r[key])).filter(Number.isFinite);
-  return {min: Math.min(...values), max: Math.max(...values),
-    mean: values.reduce((a,b)=>a+b,0)/values.length};
-}
-function color(value, min, max) {
-  const t = max === min ? .5 : Math.max(0, Math.min(1, (value-min)/(max-min)));
-  const r = Math.round(35 + 220*t), g = Math.round(190 - 55*t), b = Math.round(245 - 30*t);
-  return "rgb(" + r + "," + g + "," + b + ")";
-}
-function project(r, bounds) {
-  const x = 72 + (r.long-bounds.minLon)/(bounds.maxLon-bounds.minLon) * (canvas.width-112);
-  const y = 48 + (bounds.maxLat-r.lat)/(bounds.maxLat-bounds.minLat) * (canvas.height-100);
-  return {x,y};
-}
-function drawGrid(bounds) {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = "#061522"; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.strokeStyle = "rgba(130,210,240,.12)"; ctx.lineWidth = 1;
-  for (let i=0;i<=6;i++) {
-    const x=72+i*(canvas.width-112)/6, y=48+i*(canvas.height-100)/6;
-    ctx.beginPath(); ctx.moveTo(x,48); ctx.lineTo(x,canvas.height-52); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(72,y); ctx.lineTo(canvas.width-40,y); ctx.stroke();
-  }
-  ctx.strokeStyle = "rgba(130,210,240,.5)";
-  ctx.beginPath(); ctx.moveTo(72,48); ctx.lineTo(72,canvas.height-52); ctx.lineTo(canvas.width-40,canvas.height-52); ctx.stroke();
-  ctx.fillStyle="#91c8da"; ctx.font="12px Segoe UI";
-  ctx.fillText("Latitude", 18, 30);
-  ctx.fillText("Longitude", canvas.width-110, canvas.height-18);
-  ctx.fillStyle="#6e9ead"; ctx.font="11px Segoe UI";
-  ctx.fillText(bounds.maxLat.toFixed(5), 8, 53);
-  ctx.fillText(bounds.minLat.toFixed(5), 8, canvas.height-52);
-  ctx.fillText(bounds.minLon.toFixed(5), 72, canvas.height-36);
-  ctx.fillText(bounds.maxLon.toFixed(5), canvas.width-115, canvas.height-36);
-}
-function draw() {
-  if (!rows.length) return;
-  const values = rows.map(r=>Number(r[parameter.value])).filter(Number.isFinite);
-  const bounds = {
-    minLon: Math.min(...rows.map(r=>r.long)), maxLon: Math.max(...rows.map(r=>r.long)),
-    minLat: Math.min(...rows.map(r=>r.lat)), maxLat: Math.max(...rows.map(r=>r.lat))
-  };
-  const min=Math.min(...values), max=Math.max(...values);
-  drawGrid(bounds);
-  ctx.strokeStyle="rgba(126,219,255,.55)"; ctx.lineWidth=2;
-  ctx.beginPath();
-  rows.forEach((r,i)=>{ const p=project(r,bounds); if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y); });
-  ctx.stroke();
-  const visible = Math.max(1, Math.floor(current));
-  rows.forEach((r,i)=>{
-    if (i>=visible) return;
-    const p=project(r,bounds), v=Number(r[parameter.value]);
-    ctx.beginPath(); ctx.arc(p.x,p.y,i===visible-1?8:5,0,Math.PI*2);
-    ctx.fillStyle=color(v,min,max); ctx.fill();
-    ctx.strokeStyle=i===visible-1?"#ffffff":"#9cecff"; ctx.lineWidth=1.4; ctx.stroke();
-    if(i===visible-1){ctx.fillStyle="#e5fbff";ctx.font="bold 11px Segoe UI";ctx.fillText(r.sampling_ID,p.x+10,p.y-10);}
-  });
-  document.getElementById("legend").textContent = labels[parameter.value] + " range: " + min.toFixed(2) + "–" + max.toFixed(2);
-}
-function animate(t) {
-  if (!last) last=t;
-  current += (t-last)*.012;
-  if (current > rows.length+18) current=0;
-  last=t; draw(); requestAnimationFrame(animate);
-}
-function updateCards() {
-  const cards = document.getElementById("cards");
-  const p=range("pH"), temp=range("temp"), cond=range("cond");
-  cards.innerHTML = [
-    ["SAMPLES", rows.length],
-    ["OUTINGS", new Set(rows.map(r=>r.outing_ID)).size],
-    ["DATE", rows[0]?.date?.slice(0,10) || "—"],
-    ["MEAN pH", p.mean.toFixed(2)],
-    ["MEAN TEMP", temp.mean.toFixed(2) + " °C"],
-    ["MEAN COND.", cond.mean.toFixed(2)]
-  ].map(x=>'<div class="card"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div></div>').join("");
-}
-fetch("san_elijo_measurements.csv")
-  .then(r=>r.text()).then(text=>{
-    rows=parseCSV(text);
-    document.getElementById("subtitle").textContent =
-      rows.length + " measurements · " + new Set(rows.map(r=>r.outing_ID)).size + " outing · source: measurements.csv";
-    updateCards(); parameter.addEventListener("change", draw); requestAnimationFrame(animate);
-  })
-  .catch(()=>document.getElementById("subtitle").textContent="Could not load san_elijo_measurements.csv");
-</script>
-</body>
-</html>
+function animate(t){if(!last)last=t;current+=(t-last)*.012;if(current>rows.length+18)current=0;last=t;draw();requestAnimationFrame(animate);}
+parameter.addEventListener("change",draw);requestAnimationFrame(animate);
+</script></body></html>
